@@ -17,14 +17,7 @@ fn main() {
         println!("podcaster {}", env!("CARGO_PKG_VERSION"));
         return;
     }
-    let podcast_id = match args.podcast_id {
-        Some(pid) => pid,
-        None => {
-            eprintln!("podcastId from the config file required");
-            return;
-        }
-    };
-    let config: Config = match get_config() {
+    let config: Settings = match get_config() {
         Ok(c) => c,
         Err(e) => {
             eprintln!("Could not parse config file: {}", e);
@@ -32,22 +25,23 @@ fn main() {
         }
     };
 
-    let podcast_url = match config.podcasts.get(&podcast_id) {
-        Some(url) => url,
-        None => {
-            eprintln!("Invalid podcast-id");
-            return;
-        }
-    };
-    let dir_path = Path::new(&config.media_dir).join(&podcast_id);
-    match download_podcast(podcast_url, &dir_path) {
-        Ok(()) => {
-            println!("Download complete");
-        },
-        Err(e) => {
-            eprintln!("Could not download the podcast episode: {}", e);
-            return;
-        }
-    };
-}
+    for podcast in config.podcasts.into_iter() {
+        match &args.podcast_id {
+            Some(p_id) if p_id != &podcast.id => (),
+            _ => {
+                let dir_path = Path::new(&config.config.media_dir).join(&podcast.id);
+                match download_podcast(&podcast.url, &dir_path, args.count.unwrap_or(3)) {
+                    Ok(()) => {
+                        println!("Download complete");
+                    },
+                    Err(e) => {
+                        eprintln!("Could not download the podcast episode: {}", e);
+                        return;
+                    }
+                };
+            }
 
+        };
+    }
+
+}
