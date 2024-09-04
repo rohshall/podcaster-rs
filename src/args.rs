@@ -9,10 +9,10 @@ pub struct Args {
     #[argh(switch, short = 'v')]
     pub version: bool,
 
-    #[argh(option, description = "podcast ID")]
+    #[argh(option, short = 'p', description = "podcast ID")]
     pub podcast_id: Option<String>,
 
-    #[argh(option, description = "count of episodes")]
+    #[argh(option, short = 'c', description = "count of episodes")]
     pub count: Option<usize>,
 
     #[argh(positional, description = "show or download")]

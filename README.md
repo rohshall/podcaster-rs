@@ -9,18 +9,21 @@ A podcast downloader written in Rust.
 
 1. Support show to list the episodes available for download.
 2. Handle errors well.
-3. Show listing - local and remote episodes
-4. Download episodes using chapter numbers
+3. Remember the state of what was downloaded, so that even if the episode is deleted later, it does not re-download it.
+4. Download selected episodes.
 
 ## Usage
 ```
-<program-name> [show|download] [--podcast-id <podcastId>] [--count 3]
+<program-name> [show|download] [-p/--podcast-id <podcastId>] [-c/--count <count of episodes>]
 ```
 For example:
 ```
-podcaster download --podcast-id TheBulwark --count 5
+podcaster download -p TheBulwark -c 5
 ```
 
-It will download the latest 5 episodes of the "TheBulwark" podcast.
+Downloads latest 5 episodes of the "TheBulwark" podcast.
 
-
+```
+podcaster download
+```
+Downloads latest 3 episodes of all podcasts.

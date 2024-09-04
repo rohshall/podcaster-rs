@@ -1,13 +1,13 @@
 mod args;
 mod config;
-mod downloader;
+mod actions;
 
 use std::path::Path;
 use {
     crate::{
         args::*,
         config::*,
-        downloader::*,
+        actions::*,
     },
 };
 
@@ -29,16 +29,33 @@ fn main() {
         match &args.podcast_id {
             Some(p_id) if p_id != &podcast.id => (),
             _ => {
-                let dir_path = Path::new(&config.config.media_dir).join(&podcast.id);
-                match download_podcast(&podcast.url, &dir_path, args.count.unwrap_or(3)) {
-                    Ok(()) => {
-                        println!("Download complete");
+                match get_episodes(&podcast.url, args.count.unwrap_or(3)) {
+                    Ok(episodes) => {
+                        match args.action.as_str() {
+                            "download" => {
+                                let dir_path = Path::new(&config.config.media_dir).join(&podcast.id);
+                                match download_podcast(&episodes, &dir_path) {
+                                    Ok(()) => {
+                                        println!("Download complete");
+                                    },
+                                    Err(e) => {
+                                        eprintln!("Could not download the podcast episode: {}", e);
+                                        return;
+                                    }
+                                }
+                            },
+                            "show" => println!("{:?}", episodes),
+                            _ => {
+                                println!("Unknown action!");
+                                return;
+                            }
+                        }
                     },
                     Err(e) => {
-                        eprintln!("Could not download the podcast episode: {}", e);
+                        eprintln!("Could not get the podcast feed: {}", e);
                         return;
-                    }
-                };
+                    },
+                }
             }
 
         };
