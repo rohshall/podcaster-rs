@@ -7,10 +7,8 @@ A podcast downloader written in Rust.
 
 ### Coming soon
 
-1. Support show to list the episodes available for download.
-2. Handle errors well.
-3. Remember the state of what was downloaded, so that even if the episode is deleted later, it does not re-download it.
-4. Download selected episodes.
+1. Remember the state of what was downloaded, so that even if the episode is deleted later, it does not re-download it.
+2. Download selected episodes.
 
 ## Usage
 ```

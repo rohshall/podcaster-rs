@@ -299,6 +299,7 @@ version = "0.1.0"
 dependencies = [
  "argh",
  "attohttpc",
+ "http",
  "roxmltree",
  "serde",
  "serde_json",

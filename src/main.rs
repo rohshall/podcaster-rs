@@ -36,7 +36,7 @@ fn main() {
                                 let dir_path = Path::new(&config.config.media_dir).join(&podcast.id);
                                 match download_podcast(&episodes, &dir_path) {
                                     Ok(()) => {
-                                        println!("Download complete");
+                                        println!("{:?} download complete", podcast.id);
                                     },
                                     Err(e) => {
                                         eprintln!("Could not download the podcast episode: {}", e);
@@ -44,7 +44,12 @@ fn main() {
                                     }
                                 }
                             },
-                            "show" => println!("{:?}", episodes),
+                            "show" => {
+                                println!("\n{}:", podcast.id);
+                                for episode in episodes.iter() {
+                                    println!("{}", episode);
+                                }
+                            },
                             _ => {
                                 println!("Unknown action!");
                                 return;
