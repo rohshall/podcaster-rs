@@ -3,6 +3,8 @@ mod config;
 mod actions;
 use std::collections::HashMap;
 
+const DEFAULT_EPISODE_COUNT: usize = 3;
+
 use std::path::Path;
 use {
     crate::{
@@ -28,21 +30,22 @@ fn main() {
 
     match args.action {
         Action::DOWNLOAD => {
-            let current_state = match get_previous_state() {
+            let previous_state = match get_state() {
                 Ok(s) => s,
                 Err(_) => HashMap::new()
             };
             let mut new_state: HashMap<String, Vec<String>> = HashMap::new();
+
             for podcast in config.podcasts.into_iter() {
                 match &args.podcast_id {
                     Some(p_id) if p_id != &podcast.id => (),
                     _ => {
-                        match get_episodes(&podcast.url, args.count.unwrap_or(3)) {
+                        match get_episodes(&podcast.url, args.count.unwrap_or(DEFAULT_EPISODE_COUNT)) {
                             Ok(episodes) => {
                                 let dir_path = Path::new(&config.config.media_dir).join(&podcast.id);
-                                match download_podcast(episodes, &dir_path, current_state.get(&podcast.id).unwrap_or(&Vec::new())) {
+                                match download_podcast(episodes, &dir_path, previous_state.get(&podcast.id).unwrap_or(&Vec::new())) {
                                     Ok(downloaded_episodes) => {
-                                        println!("{:?} {} episodes available", podcast.id, downloaded_episodes.len());
+                                        println!("{:?} {} episodes downloaded", podcast.id, downloaded_episodes.len());
                                         new_state.insert(podcast.id, downloaded_episodes.into_iter().map(|e| e.guid).collect());
                                     },
                                     Err(e) => {
@@ -52,19 +55,22 @@ fn main() {
                             },
                             Err(e) => {
                                 eprintln!("Could not get the podcast feed: {}", e);
-                                return;
                             },
                         }
                     },
                 }
             }
-            // Merge the current state into the new state to get the final state.
+            // Merge the previous state into the new state to get the updated current state.
             // App state consists of what episodes were downloaded for what podcasts.
-            for (podcast_id, current_guids) in current_state.into_iter() {
-                new_state.entry(podcast_id).and_modify(|new_guids| new_guids.extend_from_slice(current_guids.as_slice())).or_insert(current_guids);
+            // To avoid storing infinite history, truncate it to latest 100 episodes.
+            for (podcast_id, previous_guids) in previous_state.into_iter() {
+                new_state.entry(podcast_id).and_modify(|new_guids| {
+                    new_guids.extend_from_slice(previous_guids.as_slice());
+                    new_guids.truncate(100);
+                }).or_insert(previous_guids);
             }
             match store_state(new_state) {
-                Ok(()) => println!("Updated app state stored."),
+                Ok(()) => println!("All is well."),
                 Err(e) => println!("Error while storing the app state {:?}", e)
             }
         },
@@ -73,7 +79,7 @@ fn main() {
                 match &args.podcast_id {
                     Some(p_id) if p_id != &podcast.id => (),
                     _ => {
-                        match get_episodes(&podcast.url, args.count.unwrap_or(3)) {
+                        match get_episodes(&podcast.url, args.count.unwrap_or(DEFAULT_EPISODE_COUNT)) {
                             Ok(episodes) => {
                                 println!("\n{}:", podcast.id);
                                 for episode in episodes.iter() {

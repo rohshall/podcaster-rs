@@ -32,7 +32,7 @@ pub fn get_config() -> Result<Settings, Box<dyn Error>> {
     Ok(config)
 }
 
-pub fn get_previous_state() -> Result<HashMap<String, Vec<String>>, Box<dyn Error>> {
+pub fn get_state() -> Result<HashMap<String, Vec<String>>, Box<dyn Error>> {
     let state_home = var("XDG_CONFIG_HOME")
         .or_else(|_| var("HOME")).unwrap();
     let state_file_path = Path::new(&state_home).join(".podcaster_state.json");
@@ -46,7 +46,7 @@ pub fn store_state(state_contents: HashMap<String, Vec<String>>) -> Result<(), B
         .or_else(|_| var("HOME")).unwrap();
     let state_file_path = Path::new(&state_home).join(".podcaster_state.json");
     let mut state_file = File::create(&state_file_path)?;
-    let state_contents = serde_json::json!(&state_contents).to_string();
+    let state_contents = serde_json::to_string_pretty(&state_contents)?;
     state_file.write_all(state_contents.as_bytes())?;
     Ok(())
 }

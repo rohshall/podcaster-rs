@@ -95,7 +95,7 @@ fn download_episode(episode: &Episode, dir_path: &PathBuf) -> bool {
 pub fn download_podcast(episodes: Vec<Episode>, dir_path: &PathBuf, episodes_downloaded: &Vec<String>) -> Result<Vec<Episode>, Box<dyn Error>> {
     fs::create_dir_all(dir_path)?;
     let downloaded = episodes.into_iter()
-        .filter(|episode| episodes_downloaded.contains(&episode.guid) || download_episode(&episode, dir_path))
+        .filter(|episode| !episodes_downloaded.contains(&episode.guid) && download_episode(&episode, dir_path))
         .collect();
     Ok(downloaded)
 }
