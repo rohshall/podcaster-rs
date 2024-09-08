@@ -7,6 +7,7 @@ use std::vec::Vec;
 use serde::Deserialize;
 use std::error::Error;
 use std::collections::HashMap;
+use crate::common::Episode;
 
 #[derive(Debug, Deserialize)]
 pub struct Podcast {
@@ -15,7 +16,8 @@ pub struct Podcast {
 }
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub media_dir: String
+    pub media_dir: String,
+    pub player: String
 }
 #[derive(Debug, Deserialize)]
 pub struct Settings {
@@ -23,7 +25,7 @@ pub struct Settings {
     pub podcasts: Vec<Podcast>,
 }
 
-pub fn get_config() -> Result<Settings, Box<dyn Error>> {
+pub fn get_settings() -> Result<Settings, Box<dyn Error>> {
     let config_home = var("XDG_CONFIG_HOME")
         .or_else(|_| var("HOME")).unwrap();
     let config_file_path = Path::new(&config_home).join(".podcasts.json");
@@ -32,16 +34,16 @@ pub fn get_config() -> Result<Settings, Box<dyn Error>> {
     Ok(config)
 }
 
-pub fn get_state() -> Result<HashMap<String, Vec<String>>, Box<dyn Error>> {
+pub fn get_state() -> Result<HashMap<String, Vec<Episode>>, Box<dyn Error>> {
     let state_home = var("XDG_CONFIG_HOME")
         .or_else(|_| var("HOME")).unwrap();
     let state_file_path = Path::new(&state_home).join(".podcaster_state.json");
     let contents = fs::read_to_string(state_file_path)?;
-    let state: HashMap<String, Vec<String>> = serde_json::from_str(&contents)?;
+    let state: HashMap<String, Vec<Episode>> = serde_json::from_str(&contents)?;
     Ok(state)
 }
 
-pub fn store_state(state_contents: HashMap<String, Vec<String>>) -> Result<(), Box<dyn Error>> {
+pub fn store_state(state_contents: HashMap<String, Vec<Episode>>) -> Result<(), Box<dyn Error>> {
     let state_home = var("XDG_CONFIG_HOME")
         .or_else(|_| var("HOME")).unwrap();
     let state_file_path = Path::new(&state_home).join(".podcaster_state.json");

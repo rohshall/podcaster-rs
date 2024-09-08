@@ -3,8 +3,10 @@ use core::str::FromStr;
 use argh::FromArgs;
 
 pub enum Action {
-    SHOW,
-    DOWNLOAD
+    REMOTE,
+    LOCAL,
+    DOWNLOAD,
+    PLAY
 }
 
 #[derive(Debug)]
@@ -14,7 +16,7 @@ pub struct ParseActionError {
 
 impl fmt::Display for ParseActionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_fmt(format_args!("Invalid value {}; allowed values are show and download", self.input))
+        f.write_fmt(format_args!("Invalid value {}; allowed values are download, remote, local and play", self.input))
     }
 }
 
@@ -23,8 +25,10 @@ impl FromStr for Action {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
-            "show" => Ok(Action::SHOW),
             "download" => Ok(Action::DOWNLOAD),
+            "remote" => Ok(Action::REMOTE),
+            "local" => Ok(Action::LOCAL),
+            "play" => Ok(Action::PLAY),
             _ => Err(ParseActionError{input: String::from(value)})
         }
     }
@@ -46,6 +50,6 @@ pub struct Args {
     #[argh(option, short = 'c', description = "count of episodes")]
     pub count: Option<usize>,
 
-    #[argh(positional, description = "show or download")]
+    #[argh(positional, description = "action - download, remote, local, play")]
     pub action: Action,
 }

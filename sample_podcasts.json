@@ -1,0 +1,20 @@
+{
+    "config": {
+        "media_dir": "/home/salil/Music",
+        "player": "/usr/bin/mpv"
+    },
+    "podcasts": [
+        {
+            "id": "BegToDiffer",
+            "url": "https://audioboom.com/channels/5114288.rss"
+        },
+        {
+            "id": "WashingtonWeek",
+            "url": "http://feeds.pbs.org/pbs/weta/washingtonweek-audio" 
+        },
+        {
+            "id": "UpFirst",
+            "url": "https://feeds.npr.org/510318/podcast.xml"
+        }
+    ]
+}

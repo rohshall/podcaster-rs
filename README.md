@@ -12,7 +12,7 @@ A podcast downloader written in Rust.
 
 ## Usage
 ```
-<program-name> [show|download] [-p/--podcast-id <podcastId>] [-c/--count <count of episodes>]
+<program-name> [download/remote/show/play] [-p/--podcast-id <podcastId>] [-c/--count <count of episodes>]
 ```
 For example:
 ```
@@ -25,3 +25,9 @@ Downloads latest 5 episodes of the "TheBulwark" podcast.
 podcaster download
 ```
 Downloads latest 3 episodes of all podcasts.
+
+`remote` shows the podcast episodes available for download.
+`download` downloads the podcast episodes.
+`local` shows the podcast episodes downloaded locally for playing.
+`play` plays the episodes downloaded.
+

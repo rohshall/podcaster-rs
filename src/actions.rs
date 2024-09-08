@@ -1,4 +1,3 @@
-use std::fmt;
 use std::str;
 use std::fs;
 use std::fs::File;
@@ -9,24 +8,7 @@ use std::path::{Path, PathBuf};
 use attohttpc;
 use roxmltree;
 use std::error::Error;
-
-#[derive(Debug)]
-pub struct Episode {
-    pub title: String,
-    pub guid: String,
-    pub url: String,
-    pub pub_date: String,
-}
-
-// Implement the trait Display to nicely show the episodes available in `show` action.
-impl fmt::Display for Episode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Truncate long titles to 74 characters.
-        let mut title = String::from(&self.title);
-        title.truncate(74);
-        f.write_fmt(format_args!("{:80} ({})", title, self.pub_date))
-    }
-}
+use crate::common::Episode;
 
 // Parse the podcast feed to extract information of the episodes.
 pub fn get_episodes(podcast_url: &String, count: usize) -> Result<Vec<Episode>, Box<dyn Error>> {
@@ -47,18 +29,17 @@ pub fn get_episodes(podcast_url: &String, count: usize) -> Result<Vec<Episode>, 
             } else {
                 None
             }
-        })
-    .take(count)
-        .collect();
+        }).take(count)
+    .collect();
     Ok(episodes)
 }
 
 // Utility function to download from an url to a file, called from the download_episode function.
-fn download_url(url: &Url, file_name: &str, path: &Path) -> Result<(), Box<dyn Error>> { 
+fn download_url(url: &Url, path: &Path) -> Result<(), Box<dyn Error>> { 
     // Some podcast episode URLs need too many redirections.
     let mut resp = attohttpc::get(url).max_redirections(8).send()?;
     if resp.is_success() {
-        println!("Downloading {:?} to {:?}", file_name, path);
+        println!("Downloading {:?}", path);
         let content_len: &str = resp.headers()["Content-Length"].to_str()?;
         let mut bytes: Vec<u8> = Vec::with_capacity(content_len.parse()?);
         resp.read_to_end(&mut bytes)?;
@@ -70,32 +51,43 @@ fn download_url(url: &Url, file_name: &str, path: &Path) -> Result<(), Box<dyn E
     }
 }
 
-// While downloading an episode, print errors, and return whether it was downloaded or not.
-fn download_episode(episode: &Episode, dir_path: &PathBuf) -> bool {
-    match Url::parse(episode.url.as_str()) {
-        Err(e) => {
-            println!("Invalid episode download URL {:?} ({:?})", episode.url, e);
-            false
-        },
-        Ok(url) => {
-            let file_name = Path::new(url.path()).file_name().unwrap();
-            let path = dir_path.join(file_name);
-            match download_url(&url, file_name.to_str().unwrap(), &path) {
-                Ok(()) => true,
-                Err(e) => {
-                    println!("Failed to download {:?} to {:?} ({:?})", url, file_name, e);
-                    false
-                }
-            }
-        }
-    }
+// Download the episode from the URL.
+fn download_episode(url: &str, dir_path: &PathBuf) -> Result<(), Box<dyn Error>> {
+    let url = Url::parse(url)?;
+    let file_name = Path::new(url.path()).file_name().unwrap();
+    let path = dir_path.join(file_name);
+    download_url(&url, &path)?;
+    Ok(())
 }
 
 // Try to download all episodes, and return the list of downloaded episodes.
-pub fn download_podcast(episodes: Vec<Episode>, dir_path: &PathBuf, episodes_downloaded: &Vec<String>) -> Result<Vec<Episode>, Box<dyn Error>> {
+pub fn download_podcast(episodes: Vec<Episode>, dir_path: &PathBuf, episodes_downloaded: &Vec<Episode>) -> Result<Vec<Episode>, Box<dyn Error>> {
     fs::create_dir_all(dir_path)?;
+    let guids_downloaded: Vec<&str> = episodes_downloaded.into_iter().map(|e| e.guid.as_str()).collect();
     let downloaded = episodes.into_iter()
-        .filter(|episode| !episodes_downloaded.contains(&episode.guid) && download_episode(&episode, dir_path))
-        .collect();
+        .filter(|episode| {
+            if guids_downloaded.contains(&episode.guid.as_str()) {
+                return false;
+            }
+            match download_episode(&episode.url.as_str(), dir_path) {
+                Ok(()) => true,
+                Err(e) => {
+                    println!("Error {:?} while downloading episode from {}", e, &episode.url);
+                    false
+                }
+            }
+        })
+    .collect();
     Ok(downloaded)
+}
+
+pub fn get_latest_episode_download(episode: Episode, dir_path: &PathBuf) -> Option<PathBuf> {
+    Url::parse(&episode.url.as_str()).ok().and_then(|url| -> Option<PathBuf> {
+        let file_name = Path::new(url.path()).file_name().unwrap();
+        let path = dir_path.join(file_name);
+        match path.try_exists() {
+            Ok(exists) => exists.then_some(path),
+            Err(_) => None
+        }
+    })
 }
