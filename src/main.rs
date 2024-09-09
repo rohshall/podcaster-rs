@@ -106,14 +106,29 @@ fn main() {
                 }
             }
         },
-        Action::LOCAL => todo!(),
+        Action::LOCAL => {
+            let no_episodes: Vec<Episode> = Vec::new();
+            let podcasts = select_podcasts(settings.podcasts, args.podcast_id);
+            let count = args.count.unwrap_or(5);
+            for podcast in podcasts.into_iter() {
+                let episodes: Vec<&Episode> = previous_state.get(&podcast.id).unwrap_or(&no_episodes).iter().take(count).collect();
+                if episodes.len() == 0 {
+                    println!("\n{}: no episode available. Download it first.", podcast.id.magenta().bold());
+                } else {
+                    println!("\n{}:", podcast.id.magenta().bold());
+                    for episode in episodes.into_iter() {
+                        println!("{}", episode);
+                    }
+                }
+            }
+        },
         Action::PLAY => {
             let no_episodes: Vec<Episode> = Vec::new();
             let podcasts = select_podcasts(settings.podcasts, args.podcast_id);
             let media_dir = Path::new(&settings.config.media_dir);
             let count = args.count.unwrap_or(1);
             let player = settings.config.player;
-            for podcast in podcasts.iter() {
+            for podcast in podcasts.into_iter() {
                 let episodes: Vec<&Episode> = previous_state.get(&podcast.id).unwrap_or(&no_episodes).iter().take(count).collect();
                 let dir_path = media_dir.join(&podcast.id);
                 if episodes.len() == 0 {

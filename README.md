@@ -16,10 +16,10 @@ A podcast downloader written in Rust.
 ```
 For example:
 ```
-podcaster download -p TheBulwark -c 5
+podcaster download -p BegToDiffer -c 5
 ```
 
-Downloads latest 5 episodes of the "TheBulwark" podcast.
+Downloads latest 5 episodes of the "BegToDiffer" podcast.
 
 ```
 podcaster download
@@ -29,5 +29,5 @@ Downloads latest 3 episodes of all podcasts.
 `remote` shows the podcast episodes available for download.
 `download` downloads the podcast episodes.
 `local` shows the podcast episodes downloaded locally for playing.
-`play` plays the episodes downloaded.
+`play` plays the episodes downloaded. It uses the `player` from the config file.
 
