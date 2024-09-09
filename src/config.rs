@@ -9,7 +9,7 @@ use std::error::Error;
 use std::collections::HashMap;
 use crate::common::Episode;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Podcast {
     pub id: String,
     pub url: String,

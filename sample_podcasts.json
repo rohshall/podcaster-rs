@@ -1,7 +1,11 @@
 {
     "config": {
         "media_dir": "/home/salil/Music",
+<<<<<<< Updated upstream
         "player": "/usr/bin/mpv"
+=======
+        "player": "/usr/bin/mpg123"
+>>>>>>> Stashed changes
     },
     "podcasts": [
         {

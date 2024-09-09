@@ -81,7 +81,11 @@ pub fn download_podcast(episodes: Vec<Episode>, dir_path: &PathBuf, episodes_dow
     Ok(downloaded)
 }
 
+<<<<<<< Updated upstream
 pub fn get_latest_episode_download(episode: Episode, dir_path: &PathBuf) -> Option<PathBuf> {
+=======
+pub fn get_episode_download(episode: &Episode, dir_path: &PathBuf) -> Option<PathBuf> {
+>>>>>>> Stashed changes
     Url::parse(&episode.url.as_str()).ok().and_then(|url| -> Option<PathBuf> {
         let file_name = Path::new(url.path()).file_name().unwrap();
         let path = dir_path.join(file_name);
