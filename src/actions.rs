@@ -105,11 +105,11 @@ fn download_podcast_helper(podcast: Podcast, media_dir: &str, count: usize, prev
         Ok(episodes) => {
             match download_podcast(episodes, &dir_path, prev_downloaded_episodes) {
                 Ok(downloaded_episodes) => {
-                    println!("{:?} {} episodes downloaded", podcast.id, downloaded_episodes.len());
+                    println!("{} {} episodes downloaded", podcast.id.magenta().bold(), downloaded_episodes.len());
                     Some((podcast.id, downloaded_episodes))
                 },
                 Err(e) => {
-                    eprintln!("Could not download the podcast {}: {}", podcast.id, e);
+                    eprintln!("Could not download the podcast {}: {}", podcast.id.magenta().bold(), e);
                     None
                 }
             }

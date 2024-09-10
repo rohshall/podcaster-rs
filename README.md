@@ -24,7 +24,7 @@ Downloads latest 5 episodes of the "BegToDiffer" podcast.
 ```
 podcaster download
 ```
-Downloads latest 3 episodes of all podcasts.
+Downloads latest episode of all podcasts.
 
 `remote` shows the podcast episodes available for download.
 `download` downloads the podcast episodes.
