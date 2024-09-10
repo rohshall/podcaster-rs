@@ -17,7 +17,8 @@ pub struct Podcast {
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub media_dir: String,
-    pub player: String
+    pub player: String,
+    pub speed: f64
 }
 #[derive(Debug, Deserialize)]
 pub struct Settings {

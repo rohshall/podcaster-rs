@@ -29,5 +29,5 @@ Downloads latest 3 episodes of all podcasts.
 `remote` shows the podcast episodes available for download.
 `download` downloads the podcast episodes.
 `local` shows the podcast episodes downloaded locally for playing.
-`play` plays the episodes downloaded. It uses the `player` from the config file.
+`play` plays the episodes downloaded. It uses the `player` from the config file. And it plays the latest episodes at the speed set by `speed` from the config. Currently, this works only if the player is `mpv`.
 

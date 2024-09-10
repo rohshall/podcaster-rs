@@ -1,13 +1,10 @@
 {
     "config": {
         "media_dir": "/home/salil/Music",
-        "player": "/usr/bin/mpv"
+        "player": "/usr/bin/mpv",
+        "speed": 1.5
     },
     "podcasts": [
-        {
-            "id": "BegToDiffer",
-            "url": "https://audioboom.com/channels/5114288.rss"
-        },
         {
             "id": "WashingtonWeek",
             "url": "http://feeds.pbs.org/pbs/weta/washingtonweek-audio" 

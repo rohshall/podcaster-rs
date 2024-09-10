@@ -174,7 +174,7 @@ pub fn show_local(podcasts: Vec<Podcast>, count: usize, previous_state: HashMap<
     }
 }
 
-pub fn play_podcasts(podcasts: Vec<Podcast>, count: usize, media_dir: &Path, player: String, previous_state: HashMap<String, Vec<Episode>>) {
+pub fn play_podcasts(podcasts: Vec<Podcast>, count: usize, media_dir: &Path, player: String, speed: f64, previous_state: HashMap<String, Vec<Episode>>) {
     let no_episodes: Vec<Episode> = Vec::new();
     for podcast in podcasts.into_iter() {
         let episodes: Vec<&Episode> = previous_state.get(&podcast.id).unwrap_or(&no_episodes).iter().take(count).collect();
@@ -187,7 +187,7 @@ pub fn play_podcasts(podcasts: Vec<Podcast>, count: usize, media_dir: &Path, pla
                 match get_episode_download(episode, &dir_path) {
                     Some(path) => {
                         let child = Command::new(&player)
-                            .arg(path.display().to_string())
+                            .args([format!("--speed={:.2}", speed), path.display().to_string()])
                             .stdout(Stdio::piped())
                             .spawn()
                             .expect("failed to execute the player");
