@@ -1,6 +1,7 @@
 use std::str;
 use std::fs;
 use std::fs::File;
+use std::thread;
 use url::Url;
 use std::io::Write;
 use std::io::Read;
@@ -96,31 +97,46 @@ fn get_episode_download(episode: &Episode, dir_path: &PathBuf) -> Option<PathBuf
     })
 }
 
-pub fn download_podcasts(podcasts: Vec<Podcast>, media_dir: &Path, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> HashMap<String, Vec<Episode>> {
+fn download_podcast_helper(podcast: Podcast, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> Option<(String, Vec<Episode>)> {
     let no_episodes: Vec<Episode> = Vec::new();
-    podcasts.into_iter()
-        .filter_map(|podcast| {
-            let prev_downloaded_episodes = previous_state.get(&podcast.id).unwrap_or(&no_episodes);
-            let dir_path = media_dir.join(&podcast.id);
-            match get_episodes(&podcast.url, count) {
-                Ok(episodes) => {
-                    match download_podcast(episodes, &dir_path, prev_downloaded_episodes) {
-                        Ok(downloaded_episodes) => {
-                            println!("{:?} {} episodes downloaded", podcast.id, downloaded_episodes.len());
-                            Some((podcast.id, downloaded_episodes))
-                        },
-                        Err(e) => {
-                            eprintln!("Could not download the podcast {}: {}", podcast.id, e);
-                            None
-                        }
-                    }
+    let prev_downloaded_episodes = previous_state.get(&podcast.id).unwrap_or(&no_episodes);
+    let dir_path = Path::new(media_dir).join(&podcast.id);
+    match get_episodes(&podcast.url, count) {
+        Ok(episodes) => {
+            match download_podcast(episodes, &dir_path, prev_downloaded_episodes) {
+                Ok(downloaded_episodes) => {
+                    println!("{:?} {} episodes downloaded", podcast.id, downloaded_episodes.len());
+                    Some((podcast.id, downloaded_episodes))
                 },
                 Err(e) => {
-                    eprintln!("Could not get the podcast feed: {}", e);
+                    eprintln!("Could not download the podcast {}: {}", podcast.id, e);
                     None
-                },
+                }
             }
-        }).collect()
+        },
+        Err(e) => {
+            eprintln!("Could not get the podcast feed: {}", e);
+            None
+        },
+    }
+}
+
+pub fn download_podcasts(podcasts: Vec<Podcast>, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> HashMap<String, Vec<Episode>> {
+    thread::scope(|s| {
+        let handles: Vec<thread::ScopedJoinHandle<Option<(String, Vec<Episode>)>>> = podcasts.into_iter().map(|podcast| s.spawn(|| download_podcast_helper(podcast, media_dir, count, previous_state))).collect();
+        let mut new_state: HashMap<String, Vec<Episode>> = HashMap::new();
+        for handle in handles.into_iter() {
+            match handle.join() {
+                Ok(res) => {
+                    res.and_then(|(podcast_id, episodes)| new_state.insert(podcast_id, episodes));
+                },
+                Err(e) => {
+                    println!("thread to download podcast failed: {:?}", e);
+                }
+            };
+        }
+        new_state
+    })
 }
 
 pub fn compute_updated_state(new_state: HashMap<String, Vec<Episode>>, previous_state: HashMap<String, Vec<Episode>>) -> HashMap<String, Vec<Episode>> { 

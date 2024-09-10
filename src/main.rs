@@ -41,8 +41,8 @@ fn main() {
         Action::DOWNLOAD => {
             let podcasts = select_podcasts(settings.podcasts, args.podcast_id);
             let count = args.count.unwrap_or(1);
-            let media_dir = Path::new(&settings.config.media_dir);
-            let new_state = download_podcasts(podcasts, media_dir, count, &previous_state);
+            let media_dir = &settings.config.media_dir;
+            let new_state = download_podcasts(podcasts, &media_dir, count, &previous_state);
             let updated_state = compute_updated_state(new_state, previous_state);
             match store_state(updated_state) {
                 Ok(()) => println!("All is well."),
