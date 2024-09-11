@@ -55,17 +55,6 @@ fn download_episode(url: &str, dir_path: &PathBuf) -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
-fn get_episode_download(episode: &Episode, dir_path: &PathBuf) -> Option<PathBuf> {
-    Url::parse(&episode.url.as_str()).ok().and_then(|url| -> Option<PathBuf> {
-        let file_name = Path::new(url.path()).file_name().unwrap();
-        let path = dir_path.join(file_name);
-        match path.try_exists() {
-            Ok(exists) => exists.then_some(path),
-            Err(_) => None
-        }
-    })
-}
-
 fn download_podcast(podcast: PodcastSetting, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> Result<Vec<Episode>, Box<dyn Error>> {
     let no_episodes: Vec<Episode> = Vec::new();
     let prev_downloaded_episodes = previous_state.get(&podcast.id).unwrap_or(&no_episodes);
@@ -166,6 +155,17 @@ pub fn show_local(podcasts: Vec<PodcastSetting>, count: usize, previous_state: H
             }
         }
     }
+}
+
+fn get_episode_download(episode: &Episode, dir_path: &PathBuf) -> Option<PathBuf> {
+    Url::parse(&episode.url.as_str()).ok().and_then(|url| -> Option<PathBuf> {
+        let file_name = Path::new(url.path()).file_name().unwrap();
+        let path = dir_path.join(file_name);
+        match path.try_exists() {
+            Ok(exists) => exists.then_some(path),
+            Err(_) => None
+        }
+    })
 }
 
 pub fn play_podcasts(podcasts: Vec<PodcastSetting>, count: usize, media_dir: &Path, player: String, speed: f64, previous_state: HashMap<String, Vec<Episode>>) {
