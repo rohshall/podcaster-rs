@@ -13,6 +13,7 @@ use crate::common::Episode;
 use colored::Colorize;
 use std::process::{Command, Stdio};
 use crate::config::PodcastSetting;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 
 // Parse the podcast feed to extract information of the episodes.
@@ -40,12 +41,8 @@ fn get_episodes(podcast_url: &String, count: usize) -> Result<Vec<Episode>, Box<
 }
 
 // Download the episode from the URL.
-fn download_episode(url: &str, dir_path: &PathBuf) -> Result<(), Box<dyn Error>> {
-    // Some podcast episode URLs need too many redirections.
-    let req = ureq::get(url);
-    let url = req.request_url()?;
-    let file_name = Path::new(url.path()).file_name().unwrap();
-    let path = dir_path.join(file_name);
+fn download_episode(agent: &ureq::Agent, url: &Url, path: &PathBuf) -> Result<(), Box<dyn Error>> {
+    let req = agent.request_url("GET", &url);
     let resp = req.call()?;
     let content_len: usize = resp.header("Content-Length").unwrap().parse()?;
     let mut bytes: Vec<u8> = Vec::with_capacity(content_len);
@@ -55,7 +52,7 @@ fn download_episode(url: &str, dir_path: &PathBuf) -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
-fn download_podcast(podcast: PodcastSetting, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> Result<Vec<Episode>, Box<dyn Error>> {
+fn download_podcast(agent: &ureq::Agent, podcast: PodcastSetting, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> Result<Vec<Episode>, Box<dyn Error>> {
     let no_episodes: Vec<Episode> = Vec::new();
     let prev_downloaded_episodes = previous_state.get(&podcast.id).unwrap_or(&no_episodes);
     let dir_path = Path::new(media_dir).join(&podcast.id);
@@ -67,10 +64,23 @@ fn download_podcast(podcast: PodcastSetting, media_dir: &str, count: usize, prev
             if guids_downloaded.contains(&episode.guid.as_str()) {
                 return false;
             }
-            match download_episode(&episode.url.as_str(), &dir_path) {
-                Ok(()) => true,
+            let url = &episode.url.as_str();
+            let req_url: Url = match url.parse() {
+                Ok(u) => u,
                 Err(e) => {
-                    eprintln!("{}: error {:?} while downloading episode from {}", &podcast.id.magenta().bold(), e, &episode.url);
+                    eprintln!("{}: invalid episode URL {} ({:?})", &podcast.id.magenta().bold(), url, e);
+                    return false;
+                }
+            };
+            let file_name = Path::new(req_url.path()).file_name().unwrap();
+            let path = dir_path.join(file_name);
+            match download_episode(agent, &req_url, &path) {
+                Ok(()) => {
+                    //println!("{}: downloaded episode to {}", &podcast.id.magenta().bold(), &path.display());
+                    true
+                },
+                Err(e) => {
+                    eprintln!("{}: error {:?} while downloading episode from {}", &podcast.id.magenta().bold(), e, &url);
                     false
                 }
             }
@@ -79,18 +89,34 @@ fn download_podcast(podcast: PodcastSetting, media_dir: &str, count: usize, prev
     Ok(downloaded_episodes)
 }
 
-pub fn download_podcasts(podcasts: Vec<PodcastSetting>, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> HashMap<String, Vec<Episode>> {
+pub fn download_podcasts(agent: &ureq::Agent, podcasts: Vec<PodcastSetting>, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> HashMap<String, Vec<Episode>> {
     thread::scope(|s| {
-        let handles: Vec<thread::ScopedJoinHandle<Option<(String, Vec<Episode>)>>> = podcasts.into_iter().map(|podcast| s.spawn(|| {
-            let podcast_id = podcast.id.to_owned();
-            match download_podcast(podcast, media_dir, count, previous_state) {
-                Ok(downloaded_episodes) => Some((podcast_id, downloaded_episodes)),
-                Err(e) => {
-                    eprintln!("{}: Failed to download podcast: {:?}", &podcast_id.magenta().bold(), e);
-                    None
+        let m = MultiProgress::new();
+        let sty = ProgressStyle::with_template(
+            "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
+        ).unwrap().progress_chars("##-");
+        let handles: Vec<thread::ScopedJoinHandle<Option<(String, Vec<Episode>)>>> = podcasts.into_iter().map(|podcast| {
+            let m_clone = m.clone();
+            let sty_clone = sty.clone();
+            let podcast_id = podcast.id.clone();
+            s.spawn(move || {
+                let n = 200;
+                let pb = m_clone.add(ProgressBar::new(n));
+                pb.set_style(sty_clone);
+                pb.set_message(podcast_id.clone());
+                match download_podcast(&agent, podcast, media_dir, count, previous_state) {
+                    Ok(downloaded_episodes) => {
+                        m_clone.println(format!("{} is downloaded!", &podcast_id)).unwrap();
+                        pb.finish_with_message("done");
+                        Some((podcast_id, downloaded_episodes))
+                    },
+                    Err(e) => {
+                        eprintln!("{}: Failed to download podcast: {:?}", &podcast_id.magenta().bold(), e);
+                        None
+                    }
                 }
-            }
-        })).collect();
+            })
+        }).collect();
         let mut new_state: HashMap<String, Vec<Episode>> = HashMap::new();
         for handle in handles.into_iter() {
             match handle.join() {

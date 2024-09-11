@@ -12,6 +12,10 @@
         {
             "id": "UpFirst",
             "url": "https://feeds.npr.org/510318/podcast.xml"
+        },
+        {
+            "id": "BegToDiffer",
+            "url": "https://audioboom.com/channels/5114288.rss"
         }
     ]
 }

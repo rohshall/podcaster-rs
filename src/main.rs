@@ -3,7 +3,9 @@ mod args;
 mod config;
 mod actions;
 use std::collections::HashMap;
+use std::time::Duration;
 use std::path::Path;
+use ureq;
 use {
     crate::{
         args::*,
@@ -42,7 +44,12 @@ fn main() {
             let podcasts = select_podcasts(settings.podcasts, args.podcast_id);
             let count = args.count.unwrap_or(1);
             let media_dir = &settings.config.media_dir;
-            let new_state = download_podcasts(podcasts, &media_dir, count, &previous_state);
+            let agent = ureq::AgentBuilder::new()
+                .redirects(8)
+                .timeout_read(Duration::from_secs(5))
+                .timeout_write(Duration::from_secs(5))
+                .build();
+            let new_state = download_podcasts(&agent, podcasts, &media_dir, count, &previous_state);
             let updated_state = compute_updated_state(new_state, previous_state);
             match store_state(updated_state) {
                 Ok(()) => println!("All is well."),
