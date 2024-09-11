@@ -12,7 +12,7 @@ use {
     },
 };
 
-fn select_podcasts(podcasts: Vec<Podcast>, podcast_id: Option<String>) -> Vec<Podcast> {
+fn select_podcasts(podcasts: Vec<PodcastSetting>, podcast_id: Option<String>) -> Vec<PodcastSetting> {
     match podcast_id {
         None => podcasts,
         Some(p_id) => podcasts.into_iter().find(|podcast| p_id == podcast.id).into_iter().collect()

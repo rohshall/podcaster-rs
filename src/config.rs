@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use crate::common::Episode;
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct Podcast {
+pub struct PodcastSetting {
     pub id: String,
     pub url: String,
 }
@@ -23,7 +23,7 @@ pub struct Config {
 #[derive(Debug, Deserialize)]
 pub struct Settings {
     pub config: Config,
-    pub podcasts: Vec<Podcast>,
+    pub podcasts: Vec<PodcastSetting>,
 }
 
 pub fn get_settings() -> Result<Settings, Box<dyn Error>> {

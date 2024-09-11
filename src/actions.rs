@@ -4,21 +4,21 @@ use std::fs::File;
 use std::thread;
 use url::Url;
 use std::io::Write;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
-use attohttpc;
+use ureq;
 use roxmltree;
 use std::error::Error;
 use crate::common::Episode;
 use colored::Colorize;
 use std::process::{Command, Stdio};
-use crate::config::Podcast;
+use crate::config::PodcastSetting;
+
 
 // Parse the podcast feed to extract information of the episodes.
 fn get_episodes(podcast_url: &String, count: usize) -> Result<Vec<Episode>, Box<dyn Error>> {
-    let podcast_response = attohttpc::get(podcast_url).send()?;
-    let podcast_feed_contents = podcast_response.text()?;
+    let podcast_response = ureq::get(podcast_url).call()?;
+    let podcast_feed_contents = podcast_response.into_string()?;
     let podcast_feed_doc = roxmltree::Document::parse(&podcast_feed_contents)?;
     let episodes: Vec<Episode> = podcast_feed_doc.descendants()
         .filter(|n| n.has_tag_name("item"))
@@ -39,51 +39,20 @@ fn get_episodes(podcast_url: &String, count: usize) -> Result<Vec<Episode>, Box<
     Ok(episodes)
 }
 
-// Utility function to download from an url to a file, called from the download_episode function.
-fn download_url(url: &Url, path: &Path) -> Result<(), Box<dyn Error>> { 
-    // Some podcast episode URLs need too many redirections.
-    let mut resp = attohttpc::get(url).max_redirections(8).send()?;
-    if resp.is_success() {
-        println!("Downloading {:?}", path);
-        let content_len: &str = resp.headers()["Content-Length"].to_str()?;
-        let mut bytes: Vec<u8> = Vec::with_capacity(content_len.parse()?);
-        resp.read_to_end(&mut bytes)?;
-        let mut file = File::create(&path)?;
-        file.write_all(bytes.as_slice())?;
-        Ok(())
-    } else {
-        Err(Box::from(format!("Failed to get valid response from {:?}", url)))
-    }
-}
-
 // Download the episode from the URL.
 fn download_episode(url: &str, dir_path: &PathBuf) -> Result<(), Box<dyn Error>> {
-    let url = Url::parse(url)?;
+    // Some podcast episode URLs need too many redirections.
+    let req = ureq::get(url);
+    let url = req.request_url()?;
     let file_name = Path::new(url.path()).file_name().unwrap();
     let path = dir_path.join(file_name);
-    download_url(&url, &path)?;
+    let resp = req.call()?;
+    let content_len: usize = resp.header("Content-Length").unwrap().parse()?;
+    let mut bytes: Vec<u8> = Vec::with_capacity(content_len);
+    resp.into_reader().read_to_end(&mut bytes)?;
+    let mut file = File::create(&path)?;
+    file.write_all(bytes.as_slice())?;
     Ok(())
-}
-
-// Try to download all episodes, and return the list of downloaded episodes.
-fn download_podcast(episodes: Vec<Episode>, dir_path: &PathBuf, episodes_downloaded: &Vec<Episode>) -> Result<Vec<Episode>, Box<dyn Error>> {
-    fs::create_dir_all(dir_path)?;
-    let guids_downloaded: Vec<&str> = episodes_downloaded.into_iter().map(|e| e.guid.as_str()).collect();
-    let downloaded = episodes.into_iter()
-        .filter(|episode| {
-            if guids_downloaded.contains(&episode.guid.as_str()) {
-                return false;
-            }
-            match download_episode(&episode.url.as_str(), dir_path) {
-                Ok(()) => true,
-                Err(e) => {
-                    println!("Error {:?} while downloading episode from {}", e, &episode.url);
-                    false
-                }
-            }
-        })
-    .collect();
-    Ok(downloaded)
 }
 
 fn get_episode_download(episode: &Episode, dir_path: &PathBuf) -> Option<PathBuf> {
@@ -97,33 +66,42 @@ fn get_episode_download(episode: &Episode, dir_path: &PathBuf) -> Option<PathBuf
     })
 }
 
-fn download_podcast_helper(podcast: Podcast, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> Option<(String, Vec<Episode>)> {
+fn download_podcast(podcast: PodcastSetting, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> Result<Vec<Episode>, Box<dyn Error>> {
     let no_episodes: Vec<Episode> = Vec::new();
     let prev_downloaded_episodes = previous_state.get(&podcast.id).unwrap_or(&no_episodes);
     let dir_path = Path::new(media_dir).join(&podcast.id);
-    match get_episodes(&podcast.url, count) {
-        Ok(episodes) => {
-            match download_podcast(episodes, &dir_path, prev_downloaded_episodes) {
-                Ok(downloaded_episodes) => {
-                    println!("{} {} episodes downloaded", podcast.id.magenta().bold(), downloaded_episodes.len());
-                    Some((podcast.id, downloaded_episodes))
-                },
+    let episodes = get_episodes(&podcast.url, count)?;
+    fs::create_dir_all(&dir_path)?;
+    let guids_downloaded: Vec<&str> = prev_downloaded_episodes.into_iter().map(|e| e.guid.as_str()).collect();
+    let downloaded_episodes = episodes.into_iter()
+        .filter(|episode| {
+            if guids_downloaded.contains(&episode.guid.as_str()) {
+                return false;
+            }
+            match download_episode(&episode.url.as_str(), &dir_path) {
+                Ok(()) => true,
                 Err(e) => {
-                    eprintln!("Could not download the podcast {}: {}", podcast.id.magenta().bold(), e);
+                    eprintln!("{}: error {:?} while downloading episode from {}", &podcast.id.magenta().bold(), e, &episode.url);
+                    false
+                }
+            }
+        })
+    .collect();
+    Ok(downloaded_episodes)
+}
+
+pub fn download_podcasts(podcasts: Vec<PodcastSetting>, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> HashMap<String, Vec<Episode>> {
+    thread::scope(|s| {
+        let handles: Vec<thread::ScopedJoinHandle<Option<(String, Vec<Episode>)>>> = podcasts.into_iter().map(|podcast| s.spawn(|| {
+            let podcast_id = podcast.id.to_owned();
+            match download_podcast(podcast, media_dir, count, previous_state) {
+                Ok(downloaded_episodes) => Some((podcast_id, downloaded_episodes)),
+                Err(e) => {
+                    eprintln!("{}: Failed to download podcast: {:?}", &podcast_id.magenta().bold(), e);
                     None
                 }
             }
-        },
-        Err(e) => {
-            eprintln!("Could not get the podcast feed: {}", e);
-            None
-        },
-    }
-}
-
-pub fn download_podcasts(podcasts: Vec<Podcast>, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> HashMap<String, Vec<Episode>> {
-    thread::scope(|s| {
-        let handles: Vec<thread::ScopedJoinHandle<Option<(String, Vec<Episode>)>>> = podcasts.into_iter().map(|podcast| s.spawn(|| download_podcast_helper(podcast, media_dir, count, previous_state))).collect();
+        })).collect();
         let mut new_state: HashMap<String, Vec<Episode>> = HashMap::new();
         for handle in handles.into_iter() {
             match handle.join() {
@@ -131,7 +109,7 @@ pub fn download_podcasts(podcasts: Vec<Podcast>, media_dir: &str, count: usize, 
                     res.and_then(|(podcast_id, episodes)| new_state.insert(podcast_id, episodes));
                 },
                 Err(e) => {
-                    println!("thread to download podcast failed: {:?}", e);
+                    eprintln!("thread to download podcast failed: {:?}", e);
                 }
             };
         }
@@ -159,7 +137,7 @@ pub fn compute_updated_state(new_state: HashMap<String, Vec<Episode>>, previous_
     updated_state
 }
 
-pub fn show_remote(podcasts: Vec<Podcast>, count: usize) {
+pub fn show_remote(podcasts: Vec<PodcastSetting>, count: usize) {
     for podcast in podcasts.into_iter() {
         match get_episodes(&podcast.url, count) {
             Ok(episodes) => {
@@ -175,7 +153,7 @@ pub fn show_remote(podcasts: Vec<Podcast>, count: usize) {
     }
 }
 
-pub fn show_local(podcasts: Vec<Podcast>, count: usize, previous_state: HashMap<String, Vec<Episode>>) {
+pub fn show_local(podcasts: Vec<PodcastSetting>, count: usize, previous_state: HashMap<String, Vec<Episode>>) {
     let no_episodes: Vec<Episode> = Vec::new();
     for podcast in podcasts.into_iter() {
         let episodes: Vec<&Episode> = previous_state.get(&podcast.id).unwrap_or(&no_episodes).iter().take(count).collect();
@@ -190,7 +168,7 @@ pub fn show_local(podcasts: Vec<Podcast>, count: usize, previous_state: HashMap<
     }
 }
 
-pub fn play_podcasts(podcasts: Vec<Podcast>, count: usize, media_dir: &Path, player: String, speed: f64, previous_state: HashMap<String, Vec<Episode>>) {
+pub fn play_podcasts(podcasts: Vec<PodcastSetting>, count: usize, media_dir: &Path, player: String, speed: f64, previous_state: HashMap<String, Vec<Episode>>) {
     let no_episodes: Vec<Episode> = Vec::new();
     for podcast in podcasts.into_iter() {
         let episodes: Vec<&Episode> = previous_state.get(&podcast.id).unwrap_or(&no_episodes).iter().take(count).collect();
