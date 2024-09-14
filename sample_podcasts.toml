@@ -1,6 +1,10 @@
 [config]
+# Directory where the podcasts will be downloaded.
+# Each podcast will be a subdirectory under this directory.
 media_dir = "/home/salil/Music"
-player = "/usr/bin/mpg123"
+# Music player to be used for "play" action.
+player = "/usr/bin/mpv"
+# Playback speed for the "play" action.
 playback_speed = 1.5
 
 [[podcasts]]
