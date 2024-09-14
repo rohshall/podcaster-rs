@@ -71,7 +71,7 @@ fn main() {
             let media_dir = Path::new(&settings.config.media_dir);
             let count = args.count.unwrap_or(1);
             let player = settings.config.player;
-            let speed = settings.config.speed;
+            let speed = settings.config.playback_speed;
             play_podcasts(podcasts, count, media_dir, player, speed, previous_state);
         }
     }

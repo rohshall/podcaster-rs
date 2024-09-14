@@ -1,0 +1,16 @@
+[config]
+media_dir = "/home/salil/Music"
+player = "/usr/bin/mpg123"
+playback_speed = 1.5
+
+[[podcasts]]
+id = "BegToDiffer"
+url = "https://audioboom.com/channels/5114288.rss"
+
+[[podcasts]]
+id = "WashingtonWeek"
+url = "http://feeds.pbs.org/pbs/weta/washingtonweek-audio"
+
+[[podcasts]]
+id = "UpFirst"
+url = "https://feeds.npr.org/510318/podcast.xml"

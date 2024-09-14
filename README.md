@@ -2,7 +2,7 @@
 A podcast downloader written in Rust.
 
 ## Features
-1. Reads config file in the home directory `~/.podcasts.json`  to get the config about which podcasts to download, and where to store the episodes. A sample config file `sample-podcasts.json` is included.
+1. Reads config file in the home directory `~/.podcasts.toml`  to get the config about which podcasts to download, and where to store the episodes. A sample config file `sample-podcasts.toml` is included.
 2. Downloads configurable number of episodes.
 3. Remembers the episodes that were downloaded, so that even if the episode is deleted later, it does not re-download it.
 
