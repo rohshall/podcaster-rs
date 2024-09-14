@@ -1,4 +1,3 @@
-[config]
 # Directory where the podcasts will be downloaded.
 # Each podcast will be a subdirectory under this directory.
 media_dir = "/home/salil/Music"

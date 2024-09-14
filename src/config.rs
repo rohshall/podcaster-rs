@@ -14,15 +14,12 @@ pub struct PodcastSetting {
     pub id: String,
     pub url: String,
 }
-#[derive(Debug, Deserialize)]
-pub struct Config {
-    pub media_dir: String,
-    pub player: String,
-    pub playback_speed: f64
-}
+
 #[derive(Debug, Deserialize)]
 pub struct Settings {
-    pub config: Config,
+    pub media_dir: String,
+    pub player: String,
+    pub playback_speed: f64,
     pub podcasts: Vec<PodcastSetting>,
 }
 

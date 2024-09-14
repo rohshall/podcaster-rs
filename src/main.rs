@@ -43,7 +43,7 @@ fn main() {
         Action::DOWNLOAD => {
             let podcasts = select_podcasts(settings.podcasts, args.podcast_id);
             let count = args.count.unwrap_or(1);
-            let media_dir = &settings.config.media_dir;
+            let media_dir = &settings.media_dir;
             let agent = ureq::AgentBuilder::new()
                 .redirects(8)
                 .timeout_read(Duration::from_secs(5))
@@ -68,10 +68,10 @@ fn main() {
         },
         Action::PLAY => {
             let podcasts = select_podcasts(settings.podcasts, args.podcast_id);
-            let media_dir = Path::new(&settings.config.media_dir);
+            let media_dir = Path::new(&settings.media_dir);
             let count = args.count.unwrap_or(1);
-            let player = settings.config.player;
-            let speed = settings.config.playback_speed;
+            let player = settings.player;
+            let speed = settings.playback_speed;
             play_podcasts(podcasts, count, media_dir, player, speed, previous_state);
         }
     }
