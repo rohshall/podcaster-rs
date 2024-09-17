@@ -2,6 +2,7 @@ use std::str;
 use std::fs;
 use std::fs::File;
 use std::thread;
+use std::sync::Arc;
 use url::Url;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -41,26 +42,30 @@ fn get_episodes(podcast_url: &String, count: usize) -> Result<Vec<Episode>, Box<
 }
 
 // Download the episode from the URL.
-fn download_episode(agent: &ureq::Agent, url: &Url, path: &PathBuf, pb: &ProgressBar, plimit: u64) -> Result<(), Box<dyn Error>> {
+fn download_episode(agent: &ureq::Agent, url: &Url, path: &PathBuf, m: &Arc<MultiProgress>, sty: &ProgressStyle) -> Result<(), Box<dyn Error>> {
     let req = agent.request_url("GET", &url);
     let resp = req.call()?;
     let content_len: usize = resp.header("Content-Length").unwrap().parse()?;
+    let plimit: u64 = u64::try_from(content_len).unwrap();
+    let pb = m.add(ProgressBar::new(plimit));
+    pb.set_style(sty.clone());
+    pb.set_message(path.display().to_string());
     let mut bytes: Vec<u8> = Vec::with_capacity(content_len);
     resp.into_reader().read_to_end(&mut bytes)?;
     let mut file = File::create(&path)?;
     file.write_all(bytes.as_slice())?;
     pb.inc(plimit);
+    pb.finish_with_message("done");
     Ok(())
 }
 
-fn download_podcast(agent: &ureq::Agent, podcast: PodcastSetting, media_dir: &str, count: usize, pb: &ProgressBar, previous_state: &HashMap<String, Vec<Episode>>) -> Result<Vec<Episode>, Box<dyn Error>> {
+fn download_podcast(agent: &ureq::Agent, podcast: PodcastSetting, media_dir: &str, count: usize, m: &Arc<MultiProgress>, sty: &ProgressStyle, previous_state: &HashMap<String, Vec<Episode>>) -> Result<Vec<Episode>, Box<dyn Error>> {
     let no_episodes: Vec<Episode> = Vec::new();
     let prev_downloaded_episodes = previous_state.get(&podcast.id).unwrap_or(&no_episodes);
     let dir_path = Path::new(media_dir).join(&podcast.id);
     let episodes = get_episodes(&podcast.url, count)?;
     fs::create_dir_all(&dir_path)?;
     let guids_downloaded: Vec<&str> = prev_downloaded_episodes.into_iter().map(|e| e.guid.as_str()).collect();
-    let plimit: u64 = u64::try_from(200 / episodes.len()).unwrap();
     let downloaded_episodes = episodes.into_iter()
         .filter(|episode| {
             if guids_downloaded.contains(&episode.guid.as_str()) {
@@ -76,9 +81,8 @@ fn download_podcast(agent: &ureq::Agent, podcast: PodcastSetting, media_dir: &st
             };
             let file_name = Path::new(req_url.path()).file_name().unwrap();
             let path = dir_path.join(file_name);
-            match download_episode(agent, &req_url, &path, pb, plimit) {
+            match download_episode(agent, &req_url, &path, m, sty) {
                 Ok(()) => {
-                    //println!("{}: downloaded episode to {}", &podcast.id.magenta().bold(), &path.display());
                     true
                 },
                 Err(e) => {
@@ -93,23 +97,18 @@ fn download_podcast(agent: &ureq::Agent, podcast: PodcastSetting, media_dir: &st
 
 pub fn download_podcasts(agent: &ureq::Agent, podcasts: Vec<PodcastSetting>, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> HashMap<String, Vec<Episode>> {
     thread::scope(|s| {
-        let m = MultiProgress::new();
+        let m = Arc::new(MultiProgress::new());
         let sty = ProgressStyle::with_template(
             "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
         ).unwrap().progress_chars("##-");
         let handles: Vec<thread::ScopedJoinHandle<Option<(String, Vec<Episode>)>>> = podcasts.into_iter().map(|podcast| {
-            let m_clone = m.clone();
-            let sty_clone = sty.clone();
+            let m = Arc::clone(&m);
             let podcast_id = podcast.id.clone();
+            let sty = sty.clone();
             s.spawn(move || {
-                let n = 200;
-                let pb = m_clone.add(ProgressBar::new(n));
-                pb.set_style(sty_clone);
-                pb.set_message(podcast_id.clone());
-                match download_podcast(&agent, podcast, media_dir, count, &pb, previous_state) {
+                match download_podcast(&agent, podcast, media_dir, count, &m, &sty, previous_state) {
                     Ok(downloaded_episodes) => {
-                        m_clone.println(format!("{} is downloaded!", &podcast_id)).unwrap();
-                        pb.finish_with_message("done");
+                        m.println(format!("{} is downloaded!", &podcast_id)).unwrap();
                         Some((podcast_id, downloaded_episodes))
                     },
                     Err(e) => {
