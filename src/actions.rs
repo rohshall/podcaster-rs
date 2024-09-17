@@ -4,7 +4,7 @@ use std::fs::File;
 use std::thread;
 use std::sync::Arc;
 use url::Url;
-use std::io::Write;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use ureq;
@@ -15,7 +15,6 @@ use colored::Colorize;
 use std::process::{Command, Stdio};
 use crate::config::PodcastSetting;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-
 
 // Parse the podcast feed to extract information of the episodes.
 fn get_episodes(podcast_url: &String, count: usize) -> Result<Vec<Episode>, Box<dyn Error>> {
@@ -50,12 +49,8 @@ fn download_episode(agent: &ureq::Agent, url: &Url, path: &PathBuf, m: &Arc<Mult
     let pb = m.add(ProgressBar::new(plimit));
     pb.set_style(sty.clone());
     pb.set_message(path.display().to_string());
-    let mut bytes: Vec<u8> = Vec::with_capacity(content_len);
-    resp.into_reader().read_to_end(&mut bytes)?;
     let mut file = File::create(&path)?;
-    file.write_all(bytes.as_slice())?;
-    pb.inc(plimit);
-    pb.finish_with_message("done");
+    io::copy(&mut pb.wrap_read(resp.into_reader()), &mut file).unwrap();
     Ok(())
 }
 
@@ -99,7 +94,7 @@ pub fn download_podcasts(agent: &ureq::Agent, podcasts: Vec<PodcastSetting>, med
     thread::scope(|s| {
         let m = Arc::new(MultiProgress::new());
         let sty = ProgressStyle::with_template(
-            "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
+            "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})i {msg}",
         ).unwrap().progress_chars("##-");
         let handles: Vec<thread::ScopedJoinHandle<Option<(String, Vec<Episode>)>>> = podcasts.into_iter().map(|podcast| {
             let m = Arc::clone(&m);
