@@ -58,37 +58,57 @@ fn download_episode(agent: &ureq::Agent, url: &str, dir_path: &PathBuf, m: &Arc<
     Ok(())
 }
 
+fn get_podcast_episodes(podcasts: Vec<PodcastSetting>, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> Vec<(String, Vec<Episode>)> {
+    podcasts.into_iter().filter_map(|podcast| 'podcast: {
+        let no_episodes: Vec<Episode> = Vec::new();
+        let prev_downloaded_episodes = previous_state.get(&podcast.id).unwrap_or(&no_episodes);
+        let dir_path = Path::new(media_dir).join(&podcast.id);
+        match fs::create_dir_all(&dir_path) {
+            Ok(()) => {},
+            Err(e) => {
+                eprintln!("{}: Failed to create directory to download podcast: {:?}", &podcast.id.magenta().bold(), e);
+                break 'podcast None
+            }
+        };
+        let episodes = match get_episodes(&podcast.url, count) {
+            Ok(episodes) => episodes,
+            Err(e) => {
+                eprintln!("{}: Failed to get episodes for the podcast: {:?}", &podcast.id.magenta().bold(), e);
+                break 'podcast None
+            }
+        };
+        let guids_downloaded: Vec<&str> = prev_downloaded_episodes.into_iter().map(|e| e.guid.as_str()).collect();
+        let episodes_to_download = episodes.into_iter()
+            .filter(|episode| !guids_downloaded.contains(&episode.guid.as_str()))
+            .collect();
+        Some((podcast.id.clone(), episodes_to_download))
+    }).collect()
+}
+
+fn compute_new_state(handles: Vec<(String, Vec<ScopedJoinHandle<Option<Episode>>>)>) -> HashMap<String, Vec<Episode>> {
+    let mut new_state: HashMap<String, Vec<Episode>> = HashMap::new();
+    for (podcast_id, episode_handles) in handles.into_iter() {
+        let downloaded_episodes = episode_handles.into_iter().filter_map(|handle| {
+            match handle.join() {
+                Ok(episode) => episode,
+                Err(e) => {
+                    eprintln!("thread to download podcast episode failed: {:?}", e);
+                    None
+                }
+            }}).collect();
+        new_state.insert(podcast_id.clone(), downloaded_episodes);
+    }
+    new_state
+}
+
 pub fn download_podcasts(agent: &ureq::Agent, podcasts: Vec<PodcastSetting>, media_dir: &str, count: usize, previous_state: &HashMap<String, Vec<Episode>>) -> HashMap<String, Vec<Episode>> {
+    let podcast_episodes = get_podcast_episodes(podcasts, media_dir, count, previous_state);
     thread::scope(|s| {
         let m = Arc::new(MultiProgress::new());
         let sty = ProgressStyle::with_template(
             "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})i {msg}",
         ).unwrap().progress_chars("##-");
-        let podcast_episodes: Vec<(String, Vec<Episode>)> = podcasts.into_iter().filter_map(|podcast| 'podcast: {
-            let no_episodes: Vec<Episode> = Vec::new();
-            let prev_downloaded_episodes = previous_state.get(&podcast.id).unwrap_or(&no_episodes);
-            let dir_path = Path::new(media_dir).join(&podcast.id);
-            match fs::create_dir_all(&dir_path) {
-                Ok(()) => {},
-                Err(e) => {
-                    eprintln!("{}: Failed to create directory to download podcast: {:?}", &podcast.id.magenta().bold(), e);
-                    break 'podcast None
-                }
-            };
-            let episodes = match get_episodes(&podcast.url, count) {
-                Ok(episodes) => episodes,
-                Err(e) => {
-                    eprintln!("{}: Failed to get episodes for the podcast: {:?}", &podcast.id.magenta().bold(), e);
-                    break 'podcast None
-                }
-            };
-            let guids_downloaded: Vec<&str> = prev_downloaded_episodes.into_iter().map(|e| e.guid.as_str()).collect();
-            let episodes_to_download = episodes.into_iter()
-                .filter(|episode| !guids_downloaded.contains(&episode.guid.as_str()))
-                .collect();
-            Some((podcast.id.clone(), episodes_to_download))
-        }).collect();
-        let handles: Vec<(String, Vec<ScopedJoinHandle<Option<Episode>>>)> = podcast_episodes.into_iter().map(|(podcast_id, episodes)| {
+        let handles = podcast_episodes.into_iter().map(|(podcast_id, episodes)| {
             let episode_handles = episodes.into_iter().map(|episode| {
                 let m = Arc::clone(&m);
                 let sty = sty.clone();
@@ -108,19 +128,7 @@ pub fn download_podcasts(agent: &ureq::Agent, podcasts: Vec<PodcastSetting>, med
             }).collect();
             (podcast_id, episode_handles)
         }).collect();
-        let mut new_state: HashMap<String, Vec<Episode>> = HashMap::new();
-        for (podcast_id, episode_handles) in handles.into_iter() {
-            let downloaded_episodes = episode_handles.into_iter().filter_map(|handle| {
-                match handle.join() {
-                    Ok(episode) => episode,
-                    Err(e) => {
-                        eprintln!("thread to download podcast episode failed: {:?}", e);
-                        None
-                    }
-                }}).collect();
-            new_state.insert(podcast_id.clone(), downloaded_episodes);
-        }
-        new_state
+        compute_new_state(handles)
     })
 }
 
