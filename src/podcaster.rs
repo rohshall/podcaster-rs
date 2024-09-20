@@ -75,7 +75,7 @@ fn store_state(state_contents: &HashMap<String, Vec<Episode>>) -> Result<(), Box
 }
 
 // Parse the podcast feed to extract information of the episodes.
-fn get_episodes(podcast_url: &String, count: usize) -> Result<Vec<Episode>, Box<dyn Error>> {
+fn get_episodes(podcast_url: &str, count: usize) -> Result<Vec<Episode>, Box<dyn Error>> {
     let podcast_response = ureq::get(podcast_url).call()?;
     let podcast_feed_contents = podcast_response.into_string()?;
     let podcast_feed_doc = roxmltree::Document::parse(&podcast_feed_contents)?;
@@ -125,7 +125,7 @@ fn compute_new_state(handles: Vec<(String, Vec<ScopedJoinHandle<Option<Episode>>
                     None
                 }
             }}).collect();
-        (podcast_id.clone(), downloaded_episodes)
+        (podcast_id, downloaded_episodes)
     }).collect()
 }
 
@@ -135,10 +135,10 @@ fn update_state(state: &mut HashMap<String, Vec<Episode>>, new_state: Vec<(Strin
     // App state consists of what episodes were downloaded for what podcasts.
     // To avoid storing infinite history, truncate it to latest 100 episodes.
     for (podcast_id, new_episodes) in new_state.into_iter() {
-        let mut new_episodes = new_episodes.clone();
+        let mut new_episodes = new_episodes;
         let previous_episodes = state.get(&podcast_id).unwrap_or(&no_episodes);
         new_episodes.extend_from_slice(previous_episodes.as_slice());
-        state.insert(podcast_id, new_episodes);
+        state.insert(podcast_id.clone(), new_episodes);
     }
 }
 
@@ -175,6 +175,8 @@ impl Podcaster {
         Self { settings, state, agent }
     }
 
+    // Utility function to select podcasts based on the podcast ID. If no podcast ID is specified,
+    // that means we are looking at all the podcasts from the settings.
     fn select_podcasts(&self, podcast_id: Option<String>) -> Vec<(&String, &String)> {
         match podcast_id {
             None => self.settings.podcasts.iter().collect(),
@@ -201,11 +203,16 @@ impl Podcaster {
                     break 'podcast None
                 }
             };
+            // Do not download already downloaded episodes.
             let guids_downloaded: Vec<&str> = prev_downloaded_episodes.into_iter().map(|e| e.guid.as_str()).collect();
-            let episodes_to_download = episodes.into_iter()
+            let episodes_to_download: Vec<Episode> = episodes.into_iter()
                 .filter(|episode| !guids_downloaded.contains(&episode.guid.as_str()))
                 .collect();
-            Some((podcast_id.clone(), episodes_to_download))
+            if episodes_to_download.is_empty() {
+                None
+            } else {
+                Some((podcast_id.clone(), episodes_to_download))
+            }
         }).collect()
     }
 
@@ -213,14 +220,16 @@ impl Podcaster {
         thread::scope(|s| {
             let m = Arc::new(MultiProgress::new());
             let sty = ProgressStyle::with_template(
-                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})i {msg}",
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta}) {msg}",
             ).unwrap().progress_chars("##-");
+            // Download the episodes concurrently using threads.
             let handles = podcast_episodes.into_iter().map(|(podcast_id, episodes)| {
                 let episode_handles = episodes.into_iter().map(|episode| {
                     let m = Arc::clone(&m);
                     let sty = sty.clone();
                     let podcast_id = podcast_id.clone();
                     let dir_path = Path::new(&self.settings.media_dir).join(&podcast_id);
+                    // Use scoped thread so that the closure can borrow non-static variables.
                     s.spawn(move || {
                         match download_episode(&self.agent, &episode.url.as_str(), &dir_path, &m, &sty) {
                             Ok(()) => {
@@ -233,7 +242,7 @@ impl Podcaster {
                         }
                     })
                 }).collect();
-                (podcast_id, episode_handles)
+                (podcast_id.clone(), episode_handles)
             }).collect();
             Ok(compute_new_state(handles))
         })
@@ -242,7 +251,9 @@ impl Podcaster {
     pub fn download(&mut self, podcast_id: Option<String>, count: Option<usize>) -> Result<(), Box<dyn Error>> {
         let podcasts = self.select_podcasts(podcast_id);
         let count = count.unwrap_or(1);
+        // Collect all the episodes to be downloaded.
         let podcast_episodes = self.get_podcast_episodes(podcasts, count);
+        // Download them.
         let new_state = self.download_helper(podcast_episodes)?;
         update_state(&mut self.state, new_state);
         Ok(())
@@ -250,8 +261,9 @@ impl Podcaster {
 
     pub fn catchup(&mut self, podcast_id: Option<String>, count: Option<usize>) {
         let podcasts = self.select_podcasts(podcast_id);
-        let count = count.unwrap_or(1);
+        let count = count.unwrap_or(5);
         let podcast_episodes = self.get_podcast_episodes(podcasts, count);
+        // Mark all the episodes as downloaded.
         update_state(&mut self.state, podcast_episodes);
     }
 
@@ -260,15 +272,17 @@ impl Podcaster {
         let count = count.unwrap_or(5);
         let no_episodes: Vec<Episode> = Vec::new();
         for (podcast_id, podcast_url) in podcasts.into_iter() {
+            // Get the GUIDs of the episodes already downloaded from the state.
             let downloaded_episodes: Vec<String> = self.state.get(podcast_id).unwrap_or(&no_episodes).into_iter().map(|e| e.guid.clone()).collect();
             match get_episodes(podcast_url, count) {
                 Ok(episodes) => {
                     println!("\n{}:", podcast_id.magenta().bold());
+                    // Indicate yet to be downloaded episodes with "*".
                     for episode in episodes.iter() {
                         if downloaded_episodes.contains(&episode.guid) {
                             println!(" {}", episode);
                         } else {
-                            println!("*{}", episode);
+                            println!("{}{}", "*".yellow().bold(), episode);
                         }
                     }
                 },

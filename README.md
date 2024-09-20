@@ -12,7 +12,7 @@ A podcast downloader written in Rust.
 
 ## Usage
 ```
-<program-name> [download/remote/show/play] [-p/--podcast-id <podcastId>] [-c/--count <count of episodes>]
+<program-name> [download/list/catchup/play] [-p/--podcast-id <podcastId>] [-c/--count <count of episodes>]
 ```
 For example:
 ```
@@ -20,14 +20,15 @@ podcaster download -p BegToDiffer -c 5
 ```
 
 Downloads latest 5 episodes of the "BegToDiffer" podcast.
+The default action is `download`. And the default count of episodes for download is `1`.
 
 ```
 podcaster download
 ```
 Downloads latest episode of all podcasts.
 
-`remote` shows the podcast episodes available for download.
+`list` shows the podcast episodes. It marks the ones which are not yet downloaded with `*`.
 `download` downloads the podcast episodes.
-`local` shows the podcast episodes downloaded locally for playing.
-`play` plays the episodes downloaded. It uses the `player` from the config file. And it plays the latest episodes at the speed set by `speed` from the config. Currently, this works only if the player is `mpv`.
+`catchup` marks the podcast episodes as downloaded. This is useful when you are not interested in downloading the episodes after listing them.
+`play` plays the episodes downloaded. It uses the `player` from the config file. And it plays the latest episodes at the speed set by `playback_speed` from the config. Currently, this works only if the player is `mpv`.
 
