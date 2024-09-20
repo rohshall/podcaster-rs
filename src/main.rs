@@ -1,7 +1,10 @@
 mod common;
 mod args;
 mod config;
-mod actions;
+mod download;
+mod show_local;
+mod show_remote;
+mod play;
 use std::collections::HashMap;
 use std::time::Duration;
 use std::path::Path;
@@ -9,10 +12,10 @@ use ureq;
 use {
     crate::{
         args::*,
-        config::*,
-        actions::*,
+        config::*
     },
 };
+
 
 fn select_podcasts(podcasts: Vec<PodcastSetting>, podcast_id: Option<String>) -> Vec<PodcastSetting> {
     match podcast_id {
@@ -49,8 +52,7 @@ fn main() {
                 .timeout_read(Duration::from_secs(5))
                 .timeout_write(Duration::from_secs(5))
                 .build();
-            let new_state = download_podcasts(&agent, podcasts, &media_dir, count, &previous_state);
-            let updated_state = compute_updated_state(new_state, previous_state);
+            let updated_state = download::download_podcasts(&agent, podcasts, &media_dir, count, previous_state);
             match store_state(updated_state) {
                 Ok(()) => println!("All is well."),
                 Err(e) => eprintln!("Error while storing the app state {:?}", e)
@@ -59,12 +61,12 @@ fn main() {
         Action::REMOTE => {
             let podcasts = select_podcasts(settings.podcasts, args.podcast_id);
             let count = args.count.unwrap_or(5);
-            show_remote(podcasts, count);
+            show_remote::show_remote(podcasts, count);
         },
         Action::LOCAL => {
             let podcasts = select_podcasts(settings.podcasts, args.podcast_id);
             let count = args.count.unwrap_or(5);
-            show_local(podcasts, count, previous_state);
+            show_local::show_local(podcasts, count, previous_state);
         },
         Action::PLAY => {
             let podcasts = select_podcasts(settings.podcasts, args.podcast_id);
@@ -72,7 +74,7 @@ fn main() {
             let count = args.count.unwrap_or(1);
             let player = settings.player;
             let speed = settings.playback_speed;
-            play_podcasts(podcasts, count, media_dir, player, speed, previous_state);
+            play::play_podcasts(podcasts, count, media_dir, player, speed, previous_state);
         }
     }
 }
