@@ -3,8 +3,8 @@ use core::str::FromStr;
 use argh::FromArgs;
 
 pub enum Action {
-    REMOTE,
-    LOCAL,
+    LIST,
+    CATCHUP,
     DOWNLOAD,
     PLAY
 }
@@ -26,8 +26,8 @@ impl FromStr for Action {
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
             "download" => Ok(Action::DOWNLOAD),
-            "remote" => Ok(Action::REMOTE),
-            "local" => Ok(Action::LOCAL),
+            "list" => Ok(Action::LIST),
+            "catchup" => Ok(Action::CATCHUP),
             "play" => Ok(Action::PLAY),
             _ => Err(ParseActionError{input: String::from(value)})
         }
@@ -50,6 +50,6 @@ pub struct Args {
     #[argh(option, short = 'c', description = "count of episodes")]
     pub count: Option<usize>,
 
-    #[argh(positional, description = "action - download, remote, local, play")]
+    #[argh(positional, default = "Action::DOWNLOAD", description = "action - download, list, catchup, play")]
     pub action: Action,
 }

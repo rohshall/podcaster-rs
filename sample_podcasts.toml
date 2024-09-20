@@ -6,14 +6,8 @@ player = "/usr/bin/mpv"
 # Playback speed for the "play" action.
 playback_speed = 1.5
 
-[[podcasts]]
-id = "BegToDiffer"
-url = "https://audioboom.com/channels/5114288.rss"
-
-[[podcasts]]
-id = "WashingtonWeek"
-url = "http://feeds.pbs.org/pbs/weta/washingtonweek-audio"
-
-[[podcasts]]
-id = "UpFirst"
-url = "https://feeds.npr.org/510318/podcast.xml"
+[podcasts]
+# podcast ID to podcast URL mapping
+BegToDiffer = "https://audioboom.com/channels/5114288.rss"
+WashingtonWeek = "http://feeds.pbs.org/pbs/weta/washingtonweek-audio"
+UpFirst = "https://feeds.npr.org/510318/podcast.xml"
