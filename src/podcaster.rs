@@ -15,9 +15,9 @@ use ureq;
 use roxmltree;
 use std::thread;
 use std::thread::ScopedJoinHandle;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use colored::Colorize;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use linya::{Bar, Progress};
 use std::process::{Command, Stdio};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,19 +99,17 @@ fn get_episodes(podcast_url: &str, count: usize) -> Result<Vec<Episode>, Box<dyn
 }
 
 // Download the episode from the URL.
-fn download_episode(agent: &ureq::Agent, url: &str, dir_path: &PathBuf, m: &Arc<MultiProgress>, sty: &ProgressStyle) -> Result<(), Box<dyn Error>> {
+fn download_episode(agent: &ureq::Agent, url: &str, dir_path: &PathBuf, progress: &Arc<Mutex<Progress>>) -> Result<(), Box<dyn Error>> {
     let req_url: Url = url.parse()?;
     let file_name = Path::new(req_url.path()).file_name().unwrap();
     let path = dir_path.join(file_name);
     let req = agent.request_url("GET", &req_url);
     let resp = req.call()?;
     let content_len: usize = resp.header("Content-Length").unwrap().parse()?;
-    let plimit: u64 = u64::try_from(content_len).unwrap();
-    let pb = m.add(ProgressBar::new(plimit));
-    pb.set_style(sty.clone());
-    pb.set_message(path.display().to_string());
-    let mut file = File::create(&path)?;
-    io::copy(&mut pb.wrap_read(resp.into_reader()), &mut file).unwrap();
+    let bar: Bar = progress.lock().unwrap().bar(content_len, format!("Downloading {}", path.display()));
+    let mut handle = File::create(&path)?;
+    io::copy(&mut resp.into_reader(), &mut handle).unwrap();
+    progress.lock().unwrap().inc_and_draw(&bar, content_len);
     Ok(())
 }
 
@@ -218,20 +216,16 @@ impl Podcaster {
 
     fn download_helper(&self, podcast_episodes: Vec<(String, Vec<Episode>)>) -> Result<Vec<(String, Vec<Episode>)>, Box<dyn Error>> {
         thread::scope(|s| {
-            let m = Arc::new(MultiProgress::new());
-            let sty = ProgressStyle::with_template(
-                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta}) {msg}",
-            ).unwrap().progress_chars("##-");
+            let progress = Arc::new(Mutex::new(Progress::new()));
             // Download the episodes concurrently using threads.
             let handles = podcast_episodes.into_iter().map(|(podcast_id, episodes)| {
                 let episode_handles = episodes.into_iter().map(|episode| {
-                    let m = Arc::clone(&m);
-                    let sty = sty.clone();
+                    let progress = Arc::clone(&progress);
                     let podcast_id = podcast_id.clone();
                     let dir_path = Path::new(&self.settings.media_dir).join(&podcast_id);
                     // Use scoped thread so that the closure can borrow non-static variables.
                     s.spawn(move || {
-                        match download_episode(&self.agent, &episode.url.as_str(), &dir_path, &m, &sty) {
+                        match download_episode(&self.agent, &episode.url.as_str(), &dir_path, &progress) {
                             Ok(()) => {
                                 Some(episode)
                             },
