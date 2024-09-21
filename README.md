@@ -12,7 +12,20 @@ A podcast downloader written in Rust.
 
 ## Usage
 ```
-<program-name> [download/list/catchup/play] [-p/--podcast-id <podcastId>] [-c/--count <count of episodes>]
+podcaster
+
+USAGE:
+  podcaster [OPTIONS] [ACTION]
+
+FLAGS:
+  -h, --help            Prints help information
+
+OPTIONS:
+  -p String             podcast ID
+  -c NUMBER             count of episodes
+
+ARGS:
+  ACTION                Supported actions are: download, list, catchup, and play. The default action is list.
 ```
 For example:
 ```
