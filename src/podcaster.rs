@@ -300,29 +300,25 @@ impl Podcaster {
         let media_dir = Path::new(&self.settings.media_dir);
         let player = &self.settings.player;
         let speed = self.settings.playback_speed;
-        for (podcast_id, _) in podcasts.into_iter() {
+        // Create a playlist from latest downloaded episodes of the selected podcast(s).
+        let playlist: Vec<PathBuf> = podcasts.into_iter().flat_map(|(podcast_id, _)| {
             let episodes: Vec<&Episode> = self.state.get(podcast_id).unwrap_or(&no_episodes).iter().take(count).collect();
             let dir_path = media_dir.join(podcast_id);
-            if episodes.len() == 0 {
-                println!("\n{}: no episode available. Download it first.", podcast_id.magenta().bold());
-            } else {
-                println!("\n{}:", podcast_id.magenta().bold());
-                for episode in episodes.into_iter() {
-                    match get_episode_download(episode, &dir_path) {
-                        Some(path) => {
-                            let child = Command::new(&player)
-                                .args([format!("--speed={:.2}", speed), path.display().to_string()])
-                                .stdout(Stdio::piped())
-                                .spawn()
-                                .expect("failed to execute the player");
-                            child
-                                .wait_with_output()
-                                .expect("failed to wait on child");
-                            },
-                        None => eprintln!("Could not get the file for the episode at URL {}", episode.url)
-                    }
-                }
-            }
+            let episode_files: Vec<PathBuf> = episodes.into_iter().filter_map(|episode| get_episode_download(episode, &dir_path)).collect();
+            episode_files.into_iter()
+        }).collect();
+        if playlist.is_empty() {
+            println!("No episodes available to play; download them first.");
+        } else {
+            let child = Command::new(&player)
+                .arg(format!("--rate={:.2}", speed))
+                .args(playlist)
+                .stdout(Stdio::piped())
+                .spawn()
+                .expect("failed to execute the player");
+            child
+                .wait_with_output()
+                .expect("failed to wait on child");
         }
     }
 }

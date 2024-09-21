@@ -43,5 +43,5 @@ Downloads latest episode of all podcasts.
 `list` shows the podcast episodes. It marks the ones which are not yet downloaded with `*`.
 `download` downloads the podcast episodes.
 `catchup` marks the podcast episodes as downloaded. This is useful when you are not interested in downloading the episodes after listing them.
-`play` plays the episodes downloaded. It uses the `player` from the config file. And it plays the latest episodes at the speed set by `playback_speed` from the config. Currently, this works only if the player is `mpv`.
+`play` plays the episodes downloaded. It uses the `player` from the config file. And it plays the latest episodes at the speed set by `playback_speed` from the config. Currently, this works only if the player is `vlc`.
 
