@@ -1,9 +1,8 @@
+mod settings;
+mod state;
+mod podcast;
+mod episode;
 mod podcaster;
-use {
-    crate::{
-        podcaster::*
-    },
-};
 
 const HELP: &str = "\
 podcaster
@@ -20,7 +19,7 @@ OPTIONS:
 
 ARGS:
   ACTION                Supported actions are: download, list, catchup, and play. The default action is list.
-";
+  ";
 
 
 #[derive(Debug)]
@@ -50,14 +49,11 @@ fn parse_args() -> Result<Args, pico_args::Error> {
 
 fn main() {
     let args = parse_args().expect("Failed to parse args");
-    let mut podcaster = Podcaster::new();
+    let mut podcaster = podcaster::Podcaster::new();
 
     match args.action.unwrap_or("list".to_string()).as_str() {
         "download" => {
-            match podcaster.download(args.podcast_id, args.count) {
-                Ok(()) => println!("All is well."),
-                Err(e) => eprintln!("Error while downloading podcasts {:?}", e)
-            }
+            podcaster.download(args.podcast_id, args.count);
         },
         "catchup" => {
             podcaster.catchup(args.podcast_id, args.count);
