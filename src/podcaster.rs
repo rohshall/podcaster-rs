@@ -2,6 +2,7 @@ use std::time::Duration;
 use std::thread;
 use std::thread::ScopedJoinHandle;
 use std::vec::Vec;
+use std::path::PathBuf;
 use std::collections::HashMap;
 use ureq;
 use std::sync::{Arc, Mutex};
@@ -93,8 +94,8 @@ impl Podcaster {
         let player = &self.player;
         let speed = self.playback_speed;
         // Create a playlist from latest downloaded episodes of the selected podcast(s).
-        let playlist: Vec<String> = podcasts.into_iter().flat_map(|podcast| {
-            podcast.get_files_downloaded(count).into_iter()
+        let playlist: Vec<PathBuf> = podcasts.into_iter().flat_map(|podcast| {
+            podcast.files(count).into_iter()
         }).collect();
         if playlist.is_empty() {
             println!("No episodes available to play; download them first.");

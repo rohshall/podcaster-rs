@@ -49,10 +49,10 @@ impl Podcast {
     }
 
     // Read the previously downloaded list of episode files.
-    pub fn get_files_downloaded(&self, count: usize) -> Vec<String> {
+    fn get_files_downloaded(&self) -> Vec<String> {
         let state_path = &self.dir_path.join(".files");
         match File::open(&state_path) {
-            Ok(f) => BufReader::new(f).lines().take(count).map(|line| line.unwrap()).collect(),
+            Ok(f) => BufReader::new(f).lines().map(|line| line.unwrap()).collect(),
             Err(_) => Vec::new()
         }
     }
@@ -87,7 +87,7 @@ impl Podcast {
                 return;
             }
         };
-        let files_downloaded = self.get_files_downloaded(20);
+        let files_downloaded = self.get_files_downloaded();
         let new_files_downloaded: Vec<String> = episodes.into_iter().filter_map(|episode| {
             if files_downloaded.contains(&episode.file_name) {
                 None
@@ -117,7 +117,7 @@ impl Podcast {
                 return;
             }
         };
-        let files_downloaded = self.get_files_downloaded(20);
+        let files_downloaded = self.get_files_downloaded();
         let new_files_downloaded: Vec<String> = episodes.into_iter().filter_map(|episode| {
             if files_downloaded.contains(&episode.file_name) {
                 None
@@ -133,7 +133,7 @@ impl Podcast {
     pub fn list(&self, agent: &ureq::Agent, count: usize) {
         match self.fetch_episodes(agent, count) {
             Ok(episodes) => {
-                let files_downloaded = self.get_files_downloaded(20);
+                let files_downloaded = self.get_files_downloaded();
                 println!("\n{}:", &self.id.magenta().bold());
                 // Indicate yet to be downloaded episodes with "*".
                 for episode in episodes.iter() {
@@ -148,5 +148,10 @@ impl Podcast {
                 eprintln!("Could not get the podcast feed: {}", e);
             },
         }
+    }
+
+    // Get the files for playback.
+    pub fn files(&self, count: usize) -> Vec<PathBuf> {
+        self.get_files_downloaded().into_iter().take(count).map(|file| Path::join(&self.dir_path, file)).collect()
     }
 }
