@@ -1,8 +1,7 @@
+mod podcaster;
 mod settings;
-mod state;
 mod podcast;
 mod episode;
-mod podcaster;
 
 const HELP: &str = "\
 podcaster
@@ -49,7 +48,7 @@ fn parse_args() -> Result<Args, pico_args::Error> {
 
 fn main() {
     let args = parse_args().expect("Failed to parse args");
-    let mut podcaster = podcaster::Podcaster::new();
+    let podcaster = podcaster::Podcaster::new();
 
     match args.action.unwrap_or("list".to_string()).as_str() {
         "download" => {
