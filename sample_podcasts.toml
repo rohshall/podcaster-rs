@@ -1,13 +1,11 @@
-# Directory where the podcasts will be downloaded.
-# Each podcast will be a subdirectory under this directory.
-media_dir = "/home/salil/Music"
-# Music player to be used for "play" action.
-player = "/usr/bin/mpv"
-# Playback speed for the "play" action.
+media_dir = "/Users/swadnerkar/Music"
+player = "/opt/local/bin/vlc3"
 playback_speed = 1.5
 
 [podcasts]
-# podcast ID to podcast URL mapping
 BegToDiffer = "https://audioboom.com/channels/5114288.rss"
 WashingtonWeek = "http://feeds.pbs.org/pbs/weta/washingtonweek-audio"
 UpFirst = "https://feeds.npr.org/510318/podcast.xml"
+GPS = "https://feeds.megaphone.fm/WMHY7703459968"
+TheRealTime = "https://feeds.megaphone.fm/WMHY1886903044"
+TheRemnant = "https://feeds.megaphone.fm/DISPME4897766830"
