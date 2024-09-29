@@ -9,7 +9,6 @@ categories = ["misc", "command-line-utilities"]
 description = "download podcasts"
 repository = "https://github.com/rohshall/podcaster-rs"
 readme = "README.md"
-rust-version = "1.59"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -20,6 +19,7 @@ serde_json = "1.0"
 toml = "0.8.19"
 roxmltree = "0.20.0"
 url = "2.5.2"
+dirs = "5"
 pico-args = "0.5.0"
 colored = "2"
 linya = "0.3.1"

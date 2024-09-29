@@ -18,16 +18,14 @@ pub struct Podcaster {
     agent: ureq::Agent,
     // Playback settings
     player: String,
-    playback_speed: f64,
 }
 
 impl Podcaster {
     pub fn new() -> Podcaster {
-        let settings = Settings::new().expect("Failed to parse the config file: ~/.podcasts.toml");
+        let settings = Settings::new().expect("Failed to parse the config file");
         // Store the config params.
         let media_dir = settings.media_dir;
         let player = settings.player;
-        let playback_speed = settings.playback_speed;
         // Create an HTTP client agent to be used for downloaing podcasts.
         let agent = ureq::AgentBuilder::new()
             .redirects(8)
@@ -39,7 +37,7 @@ impl Podcaster {
         let podcasts: HashMap<String, Podcast> = settings.podcasts.into_iter().map(|(podcast_id, podcast_url)| {
             (podcast_id.clone(), Podcast::new(podcast_id, podcast_url, &media_dir))
         }).collect();
-        Self { podcasts, agent, player, playback_speed }
+        Self { podcasts, agent, player }
     }
 
     // Utility function to select podcasts based on the podcast ID. If no podcast ID is specified,
@@ -92,16 +90,15 @@ impl Podcaster {
         let podcasts = self.select_podcasts(podcast_id);
         let count = count.unwrap_or(1);
         let player = &self.player;
-        let speed = self.playback_speed;
         // Create a playlist from latest downloaded episodes of the selected podcast(s).
         let playlist: Vec<PathBuf> = podcasts.into_iter().flat_map(|podcast| {
             podcast.files(count).into_iter()
         }).collect();
         if playlist.is_empty() {
-            println!("No episodes available to play; download them first.");
+            eprintln!("No episodes available to play; download them first.");
         } else {
+            println!("Playing episodes: {:?}", playlist);
             let child = Command::new(&player)
-                .arg(format!("--rate={:.2}", speed))
                 .args(playlist)
                 .stdout(Stdio::piped())
                 .spawn()

@@ -1,6 +1,5 @@
-media_dir = "/Users/swadnerkar/Music"
-player = "/opt/local/bin/vlc3"
-playback_speed = 1.5
+media_dir = "/home/salil/Music"
+player = "/usr/bin/mpg123"
 
 [podcasts]
 BegToDiffer = "https://audioboom.com/channels/5114288.rss"

@@ -2,7 +2,7 @@
 A podcast downloader written in Rust.
 
 ## Features
-1. Reads config file in the home directory `~/.podcasts.toml`  to get the config about which podcasts to download, and where to store the episodes. A sample config file `sample-podcasts.toml` is included.
+1. Reads config file in the config directory `<config-dir>/podcasts.toml` to get the config about which podcasts to download, and where to store the episodes. A sample config file `sample-podcasts.toml` is included. `<config-dir>` is specific to the OS. On Linux, it is `~/.config/podcaster-rs`; on Mac, it is `~/Library/Application Support/podcaster-rs`.
 2. Downloads configurable number of episodes.
 3. Remembers the episodes that were downloaded, so that even if the episode is deleted later, it does not re-download it.
 
@@ -43,5 +43,5 @@ Downloads latest episode of all podcasts.
 `list` shows the podcast episodes. It marks the ones which are not yet downloaded with `*`.
 `download` downloads the podcast episodes.
 `catchup` marks the podcast episodes as downloaded. This is useful when you are not interested in downloading the episodes after listing them.
-`play` plays the episodes downloaded. It uses the `player` from the config file. And it plays the latest episodes at the speed set by `playback_speed` from the config. Currently, this works only if the player is `vlc`.
+`play` plays the episodes downloaded. It uses the `player` from the config file.
 
