@@ -149,9 +149,4 @@ impl Podcast {
             },
         }
     }
-
-    // Get the files for playback.
-    pub fn files(&self, count: usize) -> Vec<PathBuf> {
-        self.get_files_downloaded().into_iter().take(count).map(|file| Path::join(&self.dir_path, file)).collect()
-    }
 }

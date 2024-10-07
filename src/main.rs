@@ -4,7 +4,7 @@ mod podcast;
 mod episode;
 
 const HELP: &str = "\
-podcaster
+podcaster: a simple podcast downloader.
 
 USAGE:
   podcaster [OPTIONS] [ACTION]
@@ -17,7 +17,7 @@ OPTIONS:
   -c NUMBER             count of episodes
 
 ARGS:
-  ACTION                Supported actions are: download, list, catchup, and play. The default action is list.
+  ACTION                Supported actions are: download, list, and catchup. The default action is list.
   ";
 
 
@@ -56,9 +56,6 @@ fn main() {
         },
         "catchup" => {
             podcaster.catchup(args.podcast_id, args.count);
-        },
-        "play" => {
-            podcaster.play(args.podcast_id, args.count);
         },
         "list" | _ => {
             podcaster.list(args.podcast_id, args.count);

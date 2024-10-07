@@ -2,12 +2,10 @@ use std::time::Duration;
 use std::thread;
 use std::thread::ScopedJoinHandle;
 use std::vec::Vec;
-use std::path::PathBuf;
 use std::collections::HashMap;
 use ureq;
 use std::sync::{Arc, Mutex};
 use linya::Progress;
-use std::process::{Command, Stdio};
 use crate::settings::Settings;
 use crate::podcast::Podcast;
 
@@ -16,8 +14,6 @@ pub struct Podcaster {
     // Model podcasts as a HashMap to quickly find out the podcast based on the podcast ID.
     podcasts: HashMap<String, Podcast>,
     agent: ureq::Agent,
-    // Playback settings
-    player: String,
 }
 
 impl Podcaster {
@@ -25,7 +21,6 @@ impl Podcaster {
         let settings = Settings::new().expect("Failed to parse the config file");
         // Store the config params.
         let media_dir = settings.media_dir;
-        let player = settings.player;
         // Create an HTTP client agent to be used for downloaing podcasts.
         let agent = ureq::AgentBuilder::new()
             .redirects(8)
@@ -37,7 +32,7 @@ impl Podcaster {
         let podcasts: HashMap<String, Podcast> = settings.podcasts.into_iter().map(|(podcast_id, podcast_url)| {
             (podcast_id.clone(), Podcast::new(podcast_id, podcast_url, &media_dir))
         }).collect();
-        Self { podcasts, agent, player }
+        Self { podcasts, agent }
     }
 
     // Utility function to select podcasts based on the podcast ID. If no podcast ID is specified,
@@ -82,30 +77,6 @@ impl Podcaster {
         let count = count.unwrap_or(5);
         for podcast in podcasts.into_iter() {
             podcast.list(&self.agent, count);
-        }
-    }
-
-    // Handle play action.
-    pub fn play(&self, podcast_id: Option<String>, count: Option<usize>) {
-        let podcasts = self.select_podcasts(podcast_id);
-        let count = count.unwrap_or(1);
-        let player = &self.player;
-        // Create a playlist from latest downloaded episodes of the selected podcast(s).
-        let playlist: Vec<PathBuf> = podcasts.into_iter().flat_map(|podcast| {
-            podcast.files(count).into_iter()
-        }).collect();
-        if playlist.is_empty() {
-            eprintln!("No episodes available to play; download them first.");
-        } else {
-            println!("Playing episodes: {:?}", playlist);
-            let child = Command::new(&player)
-                .args(playlist)
-                .stdout(Stdio::piped())
-                .spawn()
-                .expect("failed to execute the player");
-            child
-                .wait_with_output()
-                .expect("failed to wait on child");
         }
     }
 

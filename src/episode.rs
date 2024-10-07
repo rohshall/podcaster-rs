@@ -4,6 +4,7 @@ use std::io;
 use std::path::PathBuf;
 use std::error::Error;
 use std::fs::File;
+use colored::Colorize;
 use ureq;
 use std::sync::{Arc, Mutex};
 use linya::{Bar, Progress};
@@ -22,7 +23,7 @@ impl fmt::Display for Episode {
         // Truncate long titles to 74 characters.
         let mut title = String::from(&self.title);
         title.truncate(74);
-        f.write_fmt(format_args!("{:80} ({})", title, self.pub_date))
+        f.write_fmt(format_args!("{:80} {:30} ({})", title, self.file_name.yellow().bold(), self.pub_date))
     }
 }
 

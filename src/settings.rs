@@ -6,7 +6,6 @@ use std::fs;
 #[derive(Debug, Deserialize)]
 pub struct Settings {
     pub media_dir: String,
-    pub player: String,
     pub podcasts: HashMap<String, String>,
 }
 
