@@ -136,11 +136,17 @@ impl Podcast {
                 let files_downloaded = self.get_files_downloaded();
                 println!("\n{}:", &self.id.magenta().bold());
                 // Indicate yet to be downloaded episodes with "*".
+                let star = "*".yellow().bold();
+                // Don't show the file name if the episode is not downloaded.
+                let empty = " ".repeat(30);
                 for episode in episodes.iter() {
+                    // Truncate long titles to 74 characters.
+                    let mut title = String::from(&episode.title);
+                    title.truncate(74);
                     if files_downloaded.contains(&episode.file_name) {
-                        println!(" {}", episode);
+                        println!(" {:80} {:30} {}", title, episode.file_name.yellow().bold(), episode.pub_date);
                     } else {
-                        println!("{}{}", "*".yellow().bold(), episode);
+                        println!("{}{:80} {:30} {}", star, title, empty, episode.pub_date);
                     }
                 }
             },

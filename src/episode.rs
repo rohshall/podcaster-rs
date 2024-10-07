@@ -1,30 +1,18 @@
-use std::fmt;
 use url::Url;
 use std::io;
 use std::path::PathBuf;
 use std::error::Error;
 use std::fs::File;
-use colored::Colorize;
 use ureq;
 use std::sync::{Arc, Mutex};
 use linya::{Bar, Progress};
 
 #[derive(Debug)]
 pub struct Episode {
-    title: String,
+    pub title: String,
     url: String,
-    pub_date: String,
+    pub pub_date: String,
     pub file_name: String,
-}
-
-// Implement the trait Display to nicely show the episodes available in `show` action.
-impl fmt::Display for Episode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Truncate long titles to 74 characters.
-        let mut title = String::from(&self.title);
-        title.truncate(74);
-        f.write_fmt(format_args!("{:80} {:30} ({})", title, self.file_name.yellow().bold(), self.pub_date))
-    }
 }
 
 impl Episode {
