@@ -1,5 +1,4 @@
 media_dir = "/home/salil/Music"
-player = "/usr/bin/mpg123"
 
 [podcasts]
 BegToDiffer = "https://audioboom.com/channels/5114288.rss"
